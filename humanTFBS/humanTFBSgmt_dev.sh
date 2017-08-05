@@ -1,5 +1,5 @@
 #!/bin/bash
-set -x
+#set -x
 
 ###############################################################
 #
@@ -61,8 +61,6 @@ ENHANCERZIP=`basename $ENHANCERURL`
 GNAMES=$(basename $GTF .gtf.gz).gnames.txt
 ENH_BED19=enhancers.hg19.bed
 ENH_BED38=enhancers.hg38.bed
-
-
 METADATA_URL="https://www.encodeproject.org/metadata/type=Experiment&assay_title=ChIP-seq&target.investigated_as=transcription+factor&replicates.library.biosample.donor.organism.scientific_name=Homo+sapiens&files.file_type=bed+narrowPeak/metadata.tsv"
 METADATA=metadata.tsv
 METADATA_SUMMARY=metadata_summary.tsv
@@ -70,6 +68,7 @@ URLLIST=files.txt
 
 #NUMRANGE='100,250,500,1000,2000,3000,5000,100000'
 NUMRANGE='250,500,1000,2000'
+UPPER_LIMIT='5000'
 TSSGMT=human_tss_TFBS.gmt
 ENHGMT=human_enhancer_TFBS.gmt
 NRCPU=`nproc`
@@ -103,14 +102,6 @@ sed 1d gh.gff  | tr '=' '\t' \
 | sed 's/ /:/;s/ /-/;s/,//g' \
 | parallel -X myfunc \
 | sed 's/chr//' | bedtools sort > $ENH_BED38
-
-#sed 1d gh.gff  | tr '=' '\t' \
-#| awk -F"\t" '{print $1,$4,$5,$NF}' \
-#| sed 's/ /:/;s/ /-/;s/,//g' \
-#| while read line ; do
-#  COORD=`echo $line | cut -d ' ' -f1`
-#  echo $line | cut -d ' ' -f2- | tr ' ' '\n' | sed "s/^/${COORD}\t/;s/:/\t/;s/-/\t/"
-#done | sed 's/chr//' | bedtools sort > $ENH_BED38
 
 grep -v ENSG $ENH_BED38  | sort -k 4b,4 \
 | join -1 4 -2 2 - $GNAMES | tr ' ' '\t' | cut -f2- > $ENH_BED38.tmp
@@ -254,6 +245,9 @@ METADATA_SUMMARY=$2
 TSSBED=$3
 ENH_BED38=$4
 SIZE_RANGE=$5
+MD5SUM=$(md5sum $PKZ| awk '{print $1}')
+
+if [ $(grep -c $PK $METADATA_SUMMARY ) -eq "1" ] ; then
 
 TF=$(grep -w $PK $METADATA_SUMMARY | cut -f5)
 CELL=$(grep -w $PK $METADATA_SUMMARY | cut -f2,3 | sed 's/\t/_/' )
@@ -287,30 +281,35 @@ for UPSTREAM in `echo $SIZE_RANGE | tr ',' ' '` ; do
   | sed "s!^!${BASE}\tENCODE_TFBS_at_distalelements_curated_by_MarkZiemann\t!" > $GMT
 done
 
+fi
 }
 export -f map2
-parallel -X -j $NRCPU map2 \
+parallel -j $NRCPU map2 \
 ::: $(ls peakfiles/*bed.gz) \
 ::: $METADATA_SUMMARY \
 ::: $TSSBED \
 ::: $ENH_BED38 \
 ::: $SIZE_RANGE
 
+###############################################################
+echo "Trim down gene sets to the desired size"
+###############################################################
 for SET in `ls GMT/ | grep '.enh.' | awk -F"." '{print $(NF-1)"."$NF}' | sort -u ` ; do
   GMT=`echo $ENHGMT | sed "s#.gmt#.${SET}#" `
   echo $SET
-  cat GMT/*.$SET | tr '/' '_' | cut -f-5002 > $GMT
+  cat GMT/*.$SET | tr '/' '_' | cut -f-$((UPPER_LIMIT+2)) > $GMT
 done
+
+for SET in `ls GMT/ | grep tss | awk -F"." '{print $(NF-2)"."$(NF-1)"."$NF}' | sort -u ` ; do
+  GMT=`echo $TSSGMT | sed "s#.gmt#.${SET}#" `
+  echo $SET
+  cat GMT/*.$SET | tr '/' '_' | cut -f-$((UPPER_LIMIT+2)) > $GMT
+done
+
 
 ###############################################################
 echo "Trim down gene sets to the desired size"
 ###############################################################
-for SET in `ls GMT/ | grep tss | awk -F"." '{print $(NF-2)"."$(NF-1)"."$NF}' | sort -u ` ; do
-  GMT=`echo $TSSGMT | sed "s#.gmt#.${SET}#" `
-  echo $SET
-  cat GMT/*.$SET | tr '/' '_' > $GMT
-done
-
 for GMT in `ls *gmt | grep -v genes.gmt` ; do
   for NUM in `echo $NUMRANGE | tr ',' ' '` ; do
     GMT2=`echo $GMT | sed "s#.gmt#.${NUM}genes.gmt#"`
@@ -318,7 +317,6 @@ for GMT in `ls *gmt | grep -v genes.gmt` ; do
     cut -f-$NUM $GMT > $GMT2
   done
 done
-
 
 
 ###############################################################
