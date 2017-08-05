@@ -98,11 +98,11 @@ echo $LINE | cut -d ' ' -f2- | tr ' ' '\n' | sed "s/^/${COORD}\t/;s/:/\t/;s/-/\t
 }
 export -f myfunc
 
-#sed 1d gh.gff  | tr '=' '\t' \
-#| awk -F"\t" '{print $1,$4,$5,$NF}' \
-#| sed 's/ /:/;s/ /-/;s/,//g' \
-#| parallel myfunc \
-#| sed 's/chr//' | bedtools sort > $ENH_BED38
+sed 1d gh.gff  | tr '=' '\t' \
+| awk -F"\t" '{print $1,$4,$5,$NF}' \
+| sed 's/ /:/;s/ /-/;s/,//g' \
+| parallel -X myfunc \
+| sed 's/chr//' | bedtools sort > $ENH_BED38
 
 #sed 1d gh.gff  | tr '=' '\t' \
 #| awk -F"\t" '{print $1,$4,$5,$NF}' \
@@ -223,12 +223,6 @@ for URL in $(cat $URLLIST) ; do
   fi
 done
 
-#LIFTOVER HERE
-#for HG19PK in hg19_peakfiles/*gz ; do
-#  BASE=$(basename $HG19PK)
-#  liftOver $HG19PK $CHAIN peakfiles/$ENH_BED38 unmapped
-#done
-
 run_liftover(){
 set -x
 HG19PK=$1
@@ -238,7 +232,7 @@ liftOver <(zcat $HG19PK | cut -f-3,7) $CHAIN /dev/stdout unmapped \
 | sed 's/\t/\t.\t.\t.\t/3' | gzip > peakfiles/$BASE
 }
 export -f run_liftover
-parallel run_liftover ::: hg19_peakfiles/*gz ::: $CHAIN
+parallel -X run_liftover ::: hg19_peakfiles/*gz ::: $CHAIN
 
 ###############################################################
 echo "Intersect TFBS with TSS and distal elements"
@@ -295,21 +289,22 @@ done
 
 }
 export -f map2
-parallel -j $NRCPU map2 \
+parallel -X -j $NRCPU map2 \
 ::: $(ls peakfiles/*bed.gz) \
 ::: $METADATA_SUMMARY \
 ::: $TSSBED \
 ::: $ENH_BED38 \
 ::: $SIZE_RANGE
 
-#cat GMT/*.enh.gmt > $ENHGMT
 for SET in `ls GMT/ | grep '.enh.' | awk -F"." '{print $(NF-1)"."$NF}' | sort -u ` ; do
   GMT=`echo $ENHGMT | sed "s#.gmt#.${SET}#" `
   echo $SET
-  cat GMT/*.$SET | tr '/' '_' > $GMT
+  cat GMT/*.$SET | tr '/' '_' | cut -f-5002 > $GMT
 done
 
-#cat GMT/*.tss.gmt > $TSSGMT
+###############################################################
+echo "Trim down gene sets to the desired size"
+###############################################################
 for SET in `ls GMT/ | grep tss | awk -F"." '{print $(NF-2)"."$(NF-1)"."$NF}' | sort -u ` ; do
   GMT=`echo $TSSGMT | sed "s#.gmt#.${SET}#" `
   echo $SET
@@ -324,6 +319,37 @@ for GMT in `ls *gmt | grep -v genes.gmt` ; do
   done
 done
 
-#rm -rf GMT
-exit
+
+
+###############################################################
+echo "Translate Ensembl IDs into gene names"
+###############################################################
+GNAMES=$(basename $GTF .gtf.gz).gnames.txt
+GENE_SYMBOLS_DIR=gene_symbols
+
+zgrep -w gene $GTF | cut -d '"' -f2,6 \
+| tr '"' '\t' | sort -k 1b,1 > $GNAMES
+
+myfunc(){
+GNAMES=*.gnames.txt
+LINE="$*"
+PFX=$(echo $LINE | cut -d ' ' -f-2)
+GENES=$(echo $LINE | cut -f3- | tr ' ' '\n' | sort -k 1b,1 \
+| join -1 1 -2 1 - $GNAMES  | cut -d ' ' -f2 | tr '\n' ' ' )
+echo $PFX $GENES | tr ' ' '\t'
+}
+export -f myfunc
+
+if [ ! -d $GENE_SYMBOLS_DIR ] ; then
+  mkdir $GENE_SYMBOLS_DIR
+else
+  rm $GENE_SYMBOLS_DIR/*
+fi
+
+for GMT in *gmt ; do
+  >$GENE_SYMBOLS_DIR/$GMT
+  cat $GMT | parallel -X myfunc >> $GENE_SYMBOLS_DIR/$GMT
+done
+
+
 
