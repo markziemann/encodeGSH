@@ -332,7 +332,7 @@ myfunc(){
 GNAMES=*.gnames.txt
 LINE="$*"
 PFX=$(echo $LINE | cut -d ' ' -f-2)
-GENES=$(echo $LINE | cut -f3- | tr ' ' '\n' | sort -k 1b,1 \
+GENES=$(echo $LINE | cut -d ' ' -f3- | tr ' ' '\n' | sort -k 1b,1 \
 | join -1 1 -2 1 - $GNAMES  | cut -d ' ' -f2 | tr '\n' ' ' )
 echo $PFX $GENES | tr ' ' '\t'
 }
@@ -346,7 +346,7 @@ fi
 
 for GMT in *gmt ; do
   >$GENE_SYMBOLS_DIR/$GMT
-  cat $GMT | parallel -X myfunc >> $GENE_SYMBOLS_DIR/$GMT
+  cat $GMT | parallel myfunc >> $GENE_SYMBOLS_DIR/$GMT
 done
 
 
