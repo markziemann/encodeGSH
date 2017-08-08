@@ -252,7 +252,7 @@ if [ $(grep -c $PK $METADATA_SUMMARY ) -eq "1" ] ; then
 TF=$(grep -w $PK $METADATA_SUMMARY | cut -f5)
 CELL=$(grep -w $PK $METADATA_SUMMARY | cut -f2,3 | sed 's/\t/_/' )
 TRT=$(grep -w $PK $METADATA_SUMMARY | cut -f4 )
-BASE=${TF}_${CELL}_${TRT}_${RANDOM}
+BASE=${TF}_${CELL}_${TRT}_EncodeDataset:${PK}
 
 for UPSTREAM in `echo $SIZE_RANGE | tr ',' ' '` ; do
   #for DOWNSTREAM in `echo $SIZE_RANGE | tr ',' ' '` ; do
@@ -266,7 +266,7 @@ for UPSTREAM in `echo $SIZE_RANGE | tr ',' ' '` ; do
     | awk '{print $NF}' | cut -d '_' -f1 \
     | awk '!arr[$1]++'  \
     | tr '\n' '\t' | sed 's!$!\n!' \
-    | sed "s!^!${BASE}\tENCODE_TFBS_at_TSS_curated_by_MarkZiemann\t!"  > $GMT
+    | sed "s!^!${BASE}\tENCODE_Dataset:${PK}_TFBS_at_TSS\t!"  > $GMT
 
 #  done
 
@@ -278,7 +278,7 @@ for UPSTREAM in `echo $SIZE_RANGE | tr ',' ' '` ; do
   | awk '{OFS="\t"} { if ($2<1) print $1,"1",$3,$4 ; else print $0 }' ) \
   | awk '{print $NF}' | awk '!arr[$1]++' \
   | tr '\n' '\t' | sed 's!$!\n!' \
-  | sed "s!^!${BASE}\tENCODE_TFBS_at_distalelements_curated_by_MarkZiemann\t!" > $GMT
+  | sed "s!^!${BASE}\tENCODE_Dataset:${PK}_TFBS_at_distalelements\t!" > $GMT
 done
 
 fi
