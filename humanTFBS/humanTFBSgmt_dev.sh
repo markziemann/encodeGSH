@@ -4,7 +4,10 @@
 ###############################################################
 #
 #  Curate TFBS gene sets from human ENCODE data
-#  by Mark Ziemann 2016 mark.ziemann@gmail.com
+#  by Mark Ziemann, Haloom Rafehi and Antony Kaspi
+#  2016-2017
+#  This software is distributed with and may be used according
+#  to 2-clause FreeBSD License
 #
 ###############################################################
 
@@ -266,8 +269,8 @@ for UPSTREAM in `echo $SIZE_RANGE | tr ',' ' '` ; do
     | awk '{print $NF}' | cut -d '_' -f1 \
     | awk '!arr[$1]++'  \
     | tr '\n' '\t' | sed 's!$!\n!' \
-    | sed "s!^!${BASE}\tENCODE_Dataset:${PK}_TFBS_at_TSS\t!"  > $GMT
-
+    | sed "s!^!${BASE}\tGene_promoters_bound_by_${TF}_in_${CELL}_treated_with_${TRT}_as_determined_by_ChIP-seq._Derived_from_ENCODE_Project_Dataset:${PK}._Promoters_defined_as_within_1kbp_either_side_of_TSS_(Ensembl_v86).\t!" \
+    | sed 's!\-human!(human)!;s!treated_with_untreated!(untreated)!' > $GMT
 #  done
 
   GMT=GMT/$PK.enh.${UPSTREAM}bpFlanking.gmt
@@ -278,7 +281,8 @@ for UPSTREAM in `echo $SIZE_RANGE | tr ',' ' '` ; do
   | awk '{OFS="\t"} { if ($2<1) print $1,"1",$3,$4 ; else print $0 }' ) \
   | awk '{print $NF}' | awk '!arr[$1]++' \
   | tr '\n' '\t' | sed 's!$!\n!' \
-  | sed "s!^!${BASE}\tENCODE_Dataset:${PK}_TFBS_at_distalelements\t!" > $GMT
+  | sed "s!^!${BASE}\tDistal_regulatory_elements_bound_by_${TF}_in_${CELL}_treated_with_${TRT}_as_determined_by_ChIP-seq._Derived_from_ENCODE_Project_Dataset:${PK}._Distal_elements_defined_as_within_1kbp_either_side_of_GeneHancer_curated_enhancers_(accessed_Aug2017).\t!" \
+  | sed 's!\-human!(human)!;s!treated_with_untreated!(untreated)!' > $GMT
 done
 
 fi
