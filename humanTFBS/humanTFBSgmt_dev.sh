@@ -134,7 +134,9 @@ zgrep -w 'exon_number "1"' $GTF | awk '$7=="-"' \
 echo "download metadata and peak data"
 ###############################################################
 
-wget -O $METADATA "https://www.encodeproject.org/metadata/type=Experiment&assay_title=ChIP-seq&target.investigated_as=transcription+factor&replicates.library.biosample.donor.organism.scientific_name=Homo+sapiens&files.file_type=bed+narrowPeak/metadata.tsv"
+#wget -O $METADATA "https://www.encodeproject.org/metadata/type=Experiment&assay_title=ChIP-seq&target.investigated_as=transcription+factor&replicates.library.biosample.donor.organism.scientific_name=Homo+sapiens&files.file_type=bed+narrowPeak/metadata.tsv"
+wget -O $METADATA "https://www.encodeproject.org/metadata/type=Experiment&assay_title=ChIP-seq&target.investigated_as=transcription+factor&target.investigated_as=other+context&target.investigated_as=other+post-translational+modification&target.investigated_as=chromatin+remodeller&target.investigated_as=recombinant+protein&target.investigated_as=RNA+binding+protein&replicates.library.biosample.donor.organism.scientific_name=Homo+sapiens&files.file_type=bed+narrowPeak/metadata.tsv"
+
 
 grep released $METADATA | grep GRCh38 | egrep '(optimal|psudorep)' \
 | cut -f1,7,8,13,17,25,42 | tr ' ' '_' | sed 's/\t/ /2;s/\t/ /2;s/\t/ /2' \
@@ -270,7 +272,7 @@ for UPSTREAM in `echo $SIZE_RANGE | tr ',' ' '` ; do
     | awk '!arr[$1]++'  \
     | tr '\n' '\t' | sed 's!$!\n!' \
     | sed "s!^!${BASE}\tGene_promoters_bound_by_${TF}_in_${CELL}_treated_with_${TRT}_as_determined_by_ChIP-seq._Derived_from_ENCODE_Project_Dataset:${PK}._Promoters_defined_as_within_1kbp_either_side_of_TSS_(Ensembl_v86).\t!" \
-    | sed 's!\-human!(human)!;s!treated_with_untreated!(untreated)!' > $GMT
+    | sed 's!\-human!(human)!g;s!treated_with_untreated!(untreated)!' > $GMT
 #  done
 
   GMT=GMT/$PK.enh.${UPSTREAM}bpFlanking.gmt
